@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Typing Master Pro</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="dark">
+    <div id="app">
+        <aside id="side">
+            <div class="logo"><b class="acc">TYPING</b><b>MASTER</b><small>PRO EDITION</small></div>
+            <button class="nav" data-go="dashboard">🏠&nbsp; Dashboard</button>
+            <button class="nav" data-go="practice">⌨&nbsp; Practice</button>
+            <button class="nav" data-go="stats">📈&nbsp; Stats</button>
+            <button class="nav" data-go="settings">⚙&nbsp; Settings</button>
+            <button id="soundBtn" class="btn tog"></button>
+            <p class="dim sm grow">Tap anything.<br>Everything is touch-sized.</p>
+        </aside>
+        <main>
+            <section id="dashboard" class="page">
+                <div class="head">
+                    <div>
+                        <h1>Dashboard</h1>
+                        <p id="dashSub" class="dim"></p>
+                    </div>
+                    <div class="row"><button id="themeBtn" class="btn"></button><button id="quickBtn"
+                            class="btn primary"></button></div>
+                </div>
+                <div id="dashCards" class="grid4"></div>
+                <div class="panel">
+                    <h3>WPM TREND · last 20 runs</h3><canvas id="dashGraph" height="170"></canvas>
+                </div>
+                <div class="panel">
+                    <h3>ERRORS · most missed keys</h3>
+                    <div id="dashWeak" class="weak"></div>
+                </div>
+                <div class="panel">
+                    <h3>RECENT RUNS</h3>
+                    <div id="dashRecent"></div>
+                </div>
+            </section>
+            <section id="practice" class="page">
+                <h1>Practice</h1>
+                <p class="dim">Pick a mode. Tap a card to start.</p>
+                <div class="panel">
+                    <div class="row wrap"><span class="dim">Duration</span>
+                        <div id="durChips" class="row"></div>
+                        <span class="grow"></span><button id="punctBtn" class="btn"></button>
+                    </div>
+                    <p class="dim sm">Duration applies to timed modes. Zen / Marathon are word counts. Burst is always
+                        10s. Numbers / Caps ignore the punctuation toggle.</p>
+                </div>
+                <div id="modeGrid" class="grid4"></div>
+            </section>
+            <section id="stats" class="page">
+                <h1>Stats</h1>
+                <div id="statCards" class="grid4"></div>
+                <div class="panel">
+                    <h3>WPM TREND · last 50 runs</h3><canvas id="statGraph" height="210"></canvas>
+                </div>
+                <div class="split">
+                    <div class="panel">
+                        <h3>PERSONAL BEST BY MODE</h3>
+                        <div id="bestByMode"></div>
+                    </div>
+                    <div class="panel">
+                        <h3>WEAK KEYS · last 100 runs</h3>
+                        <div id="weakKeys"></div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="row">
+                        <h3 class="grow">HISTORY · last 50 runs</h3>
+                        <div id="histChips" class="row"></div>
+                    </div>
+                    <div id="histList"></div>
+                </div>
+            </section>
+            <section id="settings" class="page">
+                <h1>Settings</h1>
+                <div class="panel">
+                    <h3>TEXT SIZE</h3>
+                    <div id="fontChips" class="row"></div>
+                </div>
+                <div class="panel">
+                    <h3>TOUCH KEYBOARD</h3>
+                    <p class="dim sm">Shows an on-screen keyboard while you type.</p><button id="oskBtn"
+                        class="btn"></button>
+                </div>
+                <div class="panel">
+                    <h3>TEXTS</h3>
+                    <p id="textsLabel" class="dim"></p><label class="btn">➕&nbsp; Add a book / text file…<input
+                            id="fileIn" type="file" accept=".txt" multiple hidden></label>
+                </div>
+                <div class="panel">
+                    <h3>DATA</h3>
+                    <p class="dim sm">Scores are saved in this browser (localStorage).</p><button id="resetBtn"
+                        class="btn danger">🗑&nbsp; Reset all stats</button>
+                </div>
+            </section>
+            <section id="test" class="page">
+                <div class="row wrap">
+                    <button id="exitBtn" class="btn">✕&nbsp; Exit</button><span class="grow"></span>
+                    <span id="modeTitle" class="dim"></span><span class="grow"></span>
+                    <select id="textSel"></select><button id="keysBtn" class="btn tog">⌨&nbsp; Keys</button><button
+                        id="restartBtn" class="btn">↻&nbsp; Restart</button>
+                </div>
+                <div id="timeLabel" class="time">60</div>
+                <div class="bar"><i id="barFill"></i></div>
+                <div id="statsLabel" class="center"></div>
+                <div id="views">
+                    <div id="textbox" class="textbox"></div>
+                    <div id="inputbox" class="inputbox"></div>
+                    <div id="wordView" class="wordview"></div>
+                </div>
+                <div id="osk"></div>
+            </section>
+            <section id="results" class="page">
+                <p id="resTitle" class="dim center"></p>
+                <div id="resWpm" class="bigwpm">0.0</div>
+                <p id="resRating" class="gold center"></p>
+                <div id="resBadges" class="row center"></div>
+                <div id="resCards" class="grid3"></div>
+                <div class="panel">
+                    <h3>SPEED OVER TIME</h3><canvas id="resGraph" height="170"></canvas>
+                </div>
+                <div class="panel">
+                    <h3>MISTAKES</h3>
+                    <div id="resMist" class="mist"></div>
+                </div>
+                <div class="row wrap"><button id="againBtn" class="btn primary">↻&nbsp; Try again</button><button
+                        id="randBtn" class="btn">🎲&nbsp; Random mode</button><button id="homeBtn" class="btn">🏠&nbsp;
+                        Dashboard</button></div>
+            </section>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>
