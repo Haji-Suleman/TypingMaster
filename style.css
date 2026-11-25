@@ -575,3 +575,10 @@ select {
         display: none
     }
 }
+
+.texttitle {
+    text-align: center;
+    font-size: 18px;
+    color: var(--acc);
+    min-height: 24px
+}

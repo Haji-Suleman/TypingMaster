@@ -1,5 +1,5 @@
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
-const esc = s => s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const DURS = [15, 30, 60, 120, 300, 600], FONTS = { Small: 20, Medium: 24, Large: 30 }, LINE = 50;
 const MODES = [
     { id: 'focus', i: '🎯', t: 'Focus', d: 'The classic. Live letter-by-letter highlighting.', v: 'inline' },
@@ -15,28 +15,60 @@ const MODES = [
     { id: 'burst', i: '💥', t: 'Burst', d: '10 seconds flat out. Pure sprint.', v: 'inline', fixed: 10 },
     { id: 'marathon', i: '🏃', t: 'Marathon', d: '150 words. Just finish the run.', v: 'inline', timed: 0, words: 150 }];
 const MODE = {}; MODES.forEach(m => MODE[m.id] = m);
-let TEXTS = [{ name: 'Built-in passage', text: "The quick brown fox jumps over the lazy dog. Practice makes progress, so keep your eyes on the screen and let your fingers find the keys. Speed comes from accuracy, and accuracy comes from slow, steady, relaxed typing every single day. Great typists build rhythm before speed, they read ahead, breathe evenly, and never look down at the keyboard while the words flow across the page. Small habits, repeated daily, turn into skill; patience, not panic, wins the race." }];
-try { (JSON.parse(localStorage.getItem('tm_texts')) || []).forEach(t => TEXTS.push(t)) } catch (e) { }
+const FALLBACK = "The quick brown fox jumps over the lazy dog. Practice makes progress, so keep your eyes on the screen and let your fingers find the keys. Speed comes from accuracy, and accuracy comes from slow, steady, relaxed typing every single day. Great typists build rhythm before speed, they read ahead, breathe evenly, and never look down at the keyboard while the words flow across the page. Small habits, repeated daily, turn into skill; patience, not panic, wins the race.";
+let TEXTS = [];
 let S = { settings: { dur: 60, punct: true, mode: 'focus', font: 24, osk: false, sound: true, dark: true, text: 0 }, hist: [] };
 try { const x = JSON.parse(localStorage.getItem('tm')); if (x) { S.settings = Object.assign(S.settings, x.settings); S.hist = x.hist || [] } } catch (e) { }
-const st = S.settings;
+const st = S.settings; if (typeof st.text !== 'string') st.text = ''; st.para = +st.para || 0;
 const save = () => { try { localStorage.setItem('tm', JSON.stringify(S)) } catch (e) { } };
 // ---------- sound
 let AC = null;
 function beep(f, d, type = 'sine', v = .08) { if (!st.sound) return; try { AC = AC || new AudioContext(); const o = AC.createOscillator(), g = AC.createGain(); o.type = type; o.frequency.value = f; g.gain.setValueAtTime(v, AC.currentTime); g.gain.exponentialRampToValueAtTime(.0001, AC.currentTime + d); o.connect(g).connect(AC.destination); o.start(); o.stop(AC.currentTime + d) } catch (e) { } }
 const snd = { click: () => beep(170 + Math.random() * 40, .04, 'triangle', .1), error: () => beep(130, .12, 'sawtooth', .06), finish: () => { beep(784, .3); setTimeout(() => beep(1046, .4), 110) }, fail: () => { beep(196, .3); setTimeout(() => beep(147, .4), 120) }, win: () => [523, 659, 784, 1046, 1318].forEach((f, i) => setTimeout(() => beep(f, .7), i * 90)) };
 // ---------- words
+const pretty = f => { const x = f.replace(/\.txt$/i, '').replace(/[_-]/g, ' ').trim(); return x ? x[0].toUpperCase() + x.slice(1) : f };
+const curFile = () => st.text ? TEXTS.find(t => t.name === st.text) : null;
+const paras = f => f.text.split(/\r?\n\s*\r?\n/).map(p => p.trim()).filter(Boolean);
+let tokenPos = 0, textUsed = '';
 function tokens(punct) {
-    const t = TEXTS[Math.min(st.text, TEXTS.length - 1)].text.replace(/[“”]/g, '"').replace(/[‘’]/g, "'").replace(/[—–]/g, '-').replace(/--/g, ' ').split(/\s+/).filter(Boolean);
+    let text = FALLBACK; const f = curFile();
+    if (f) { const p = paras(f); if (st.para > 0 && st.para <= p.length) text = p[st.para - 1]; else if (p.length) text = p.join('\n\n') }
+    else if (TEXTS.length) text = TEXTS[Math.floor(Math.random() * TEXTS.length)].text;
+    const t = text.replace(/[“”]/g, '"').replace(/[‘’]/g, "'").replace(/[—–]/g, '-').replace(/--/g, ' ').split(/\s+/).filter(Boolean);
     const r = punct ? t.filter(w => /^[A-Za-z0-9.,;:!?'"()\-]+$/.test(w) && w.length <= 16) : t.map(w => w.toLowerCase().replace(/[^a-z]/g, '')).filter(w => w && w.length <= 14);
     return r.length ? r : ['the', 'quick', 'brown', 'fox']
 }
 const rcase = w => [...w].map(c => Math.random() < .42 ? c.toUpperCase() : c.toLowerCase()).join('');
 function getWords(n, cs) {
     if (cs === 'numbers') return Array.from({ length: n }, () => { const k = [1, 2, 2, 3, 3, 4][Math.floor(Math.random() * 6)], v = Math.floor(Math.random() * 10 ** k); return Math.random() < .35 ? String(v).padStart(k, '0') : String(v) });
-    let t = tokens(st.punct); const out = []; let p = Math.floor(Math.random() * t.length);
-    for (let i = 0; i < n; i++)out.push(t[(p + i) % t.length]);
+    let t = tokens(st.punct), out;
+    if (curFile()) { out = []; for (let i = 0; i < n; i++)out.push(t[(tokenPos + i) % t.length]); tokenPos = (tokenPos + n) % t.length }
+    else { while (t.length < n) t = t.concat(t); const p = Math.floor(Math.random() * (t.length - n + 1)); out = t.slice(p, p + n) }
     return cs === 'caps' ? out.map(rcase) : out
+}
+// ---------- Data folder loading
+const lsGet = (k) => { try { return JSON.parse(localStorage.getItem(k)) || [] } catch (e) { return [] } };
+async function loadData() {
+    let files = [];
+    try {
+        let names = null;
+        try { const r = await fetch('Data/manifest.json'); if (r.ok) names = await r.json() } catch (e) { }
+        if (!names) { try { const r = await fetch('Data/'); if (r.ok) { const h = await r.text(); names = [...h.matchAll(/href="([^"]+\.txt)"/gi)].map(m => decodeURIComponent(m[1].split('/').pop())) } } catch (e) { } }
+        if (names) for (const n of names) { try { const r = await fetch('Data/' + encodeURIComponent(n)); if (r.ok) files.push({ name: n, text: await r.text() }) } catch (e) { } }
+    } catch (e) { }
+    if (!files.length && Array.isArray(window.DATA_TEXTS)) files = window.DATA_TEXTS.slice();
+    if (!files.length) files = lsGet('tm_data');
+    const by = (a, b) => a.name.localeCompare(b.name);
+    TEXTS = [...files.sort(by), ...lsGet('tm_texts').sort(by)];
+    fillTexts(); refreshSettings()
+}
+function fillTexts() {
+    const f = curFile(); if (!f && st.text) { st.text = ''; st.para = 0 }
+    const ps = f ? paras(f) : []; if (st.para > ps.length) st.para = 0;
+    const opts = '<option value="">🎲  Random text</option>' + TEXTS.map(t => `<option value="${esc(t.name)}">📖  ${esc(pretty(t.name))}</option>`).join('');
+    const po = '<option value="0">📄  Whole text</option>' + ps.map((p, i) => { let v = p.replace(/\s+/g, ' ').slice(0, 42); if (p.length > 42) v += '…'; return `<option value="${i + 1}">${i + 1}.  ${esc(v)}</option>` }).join('');
+    $$('.textSel').forEach(e => { e.innerHTML = opts; e.value = st.text });
+    $$('.paraSel').forEach(e => { e.innerHTML = po; e.value = st.para; e.disabled = !f })
 }
 // ---------- session
 class Session {
@@ -97,7 +129,7 @@ const rating = w => w < 25 ? 'Warming up' : w < 40 ? 'Average' : w < 60 ? 'Above
 const fmt = x => { x = +x; if (x < 60) return Math.round(x) + 's'; return Math.floor(x / 60) + 'm ' + String(Math.floor(x % 60)).padStart(2, '0') + 's' };
 function prettyTime(t) { const d = new Date(t.replace(' ', 'T')), gap = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 864e5); return (gap === 0 ? 'Today' : gap === 1 ? 'Yesterday' : d.toDateString().slice(4)) + ', ' + t.slice(11) }
 function histCard(e, compact) {
-    const m = MODE[e.mid]; return `<div class="hist"><span style="font-size:26px">${m ? m.i : '⌨'}</span><div><b style="font-size:17px">${m ? m.t : 'Run'}</b><br><small class="dim">${e.cfg} · ${prettyTime(e.t)}</small></div>
+    const m = MODE[e.mid]; return `<div class="hist"><span style="font-size:26px">${m ? m.i : '⌨'}</span><div><b style="font-size:17px">${m ? m.t : 'Run'}</b><br><small class="dim">${e.cfg}${e.text ? ' · ' + esc(pretty(e.text)) : ''} · ${prettyTime(e.t)}</small></div>
  ${e.pb ? '<span class="pill gold">★ PERSONAL BEST</span>' : ''}${e.failed ? '<span class="pill" style="color:var(--bad)">☠ ENDED ON MISTAKE</span>' : ''}
  <span class="dim sm">Acc <b style="color:${accCol(e.acc)}">${e.acc.toFixed(1)}%</b> · Raw ${e.raw} · Errors ${e.errors} · ${fmt(e.secs)}${compact ? '' : ` · Cons ${e.cons == null ? '-' : Math.round(e.cons) + '%'} · Peak ${e.peak} · Keys ${e.keys} · Back ${e.backs}`}</span>
  <div class="wpm">${e.wpm.toFixed(1)}<small class="dim sm"> WPM</small><br><small class="gold sm">${stars(e.wpm)} ${rating(e.wpm)}</small></div></div>`
@@ -125,18 +157,17 @@ function refreshStats() {
     const today = new Date().toISOString().slice(0, 10), r = S.hist.filter(e => hfilter === 'all' || (hfilter === 'best' && e.pb) || (hfilter === 'today' && e.t.startsWith(new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(new Date().getDate()).padStart(2, '0'))));
     $('#histList').innerHTML = r.length ? r.slice(-50).reverse().map(e => histCard(e)).join('') : '<span class="dim">' + (S.hist.length ? 'No runs match this filter.' : 'No runs yet.') + '</span>'
 }
-function refreshSettings() { chips($('#fontChips'), Object.entries(FONTS), st.font, v => { st.font = v; save() }); const b = $('#oskBtn'); b.classList.toggle('on', st.osk); b.textContent = 'On-screen keyboard:  ' + (st.osk ? 'ON' : 'OFF'); $('#textsLabel').textContent = TEXTS.length - 1 + ' text file(s) loaded' + (TEXTS.length > 1 ? '' : '  (using a built-in passage)') }
-function fillTexts() { const sel = $('#textSel'); sel.innerHTML = TEXTS.map((t, i) => `<option value="${i}">${i ? '📖  ' : '🎲  '}${esc(t.name)}</option>`).join(''); sel.value = Math.min(st.text, TEXTS.length - 1) }
+function refreshSettings() { chips($('#fontChips'), Object.entries(FONTS), st.font, v => { st.font = v; save() }); const b = $('#oskBtn'); b.classList.toggle('on', st.osk); b.textContent = 'On-screen keyboard:  ' + (st.osk ? 'ON' : 'OFF'); $('#textsLabel').textContent = TEXTS.length + ' text file(s) loaded' + (TEXTS.length ? '' : '  (using a built-in passage)') }
 // ---------- test
 function applyFont() { const f = st.font + 'px'; $('#textbox').style.fontSize = f; $('#inputbox').style.fontSize = f; $('#wordView').style.fontSize = f }
 function start(id) {
-    if (id) st.mode = id; spec = MODE[st.mode]; let n, dur, timed = spec.timed !== 0;
+    fillTexts(); if (id) st.mode = id; spec = MODE[st.mode]; let n, dur, timed = spec.timed !== 0;
     if (spec.fixed) { n = 100; dur = spec.fixed } else if (spec.words) { n = spec.words; dur = timed ? st.dur : 3600 } else { n = Math.max(100, st.dur * 4); dur = st.dur }
-    s = new Session(getWords(n, spec.cs), dur, { sudden: spec.sudden || 0, timed: timed ? 1 : 0, nb: spec.nb || 0 });
+    tokenPos = 0; s = new Session(getWords(n, spec.cs), dur, { sudden: spec.sudden || 0, timed: timed ? 1 : 0, nb: spec.nb || 0 });
     const variant = spec.cs === 'numbers' ? 'digits' : spec.cs === 'caps' ? 'mixed case' : st.punct ? 'punctuation on' : 'punctuation off';
     const tt = spec.fixed ? spec.fixed + 's' : timed ? (st.dur < 60 ? st.dur + 's' : st.dur / 60 + 'm') : spec.words + ' words';
     cfgText = tt + ' · ' + variant; modeKey = `${spec.id}|${timed ? dur : 'zen'}|${variant[0]}`; best = Math.max(0, ...S.hist.filter(e => e.key === modeKey).map(e => e.wpm));
-    $('#modeTitle').textContent = `${spec.icon || spec.i}  ${spec.t}   ·   ${cfgText}`; save(); fillTexts(); $('#textSel').disabled = spec.cs === 'numbers'; applyFont();
+    $('#modeTitle').textContent = `${spec.icon || spec.i}  ${spec.t}   ·   ${cfgText}`; save(); fillTexts(); const num = spec.cs === 'numbers', cf = curFile(); $$('.textSel').forEach(e => e.disabled = num); $$('.paraSel').forEach(e => e.disabled = num || !cf); textUsed = !num && cf ? st.text : ''; $('#textTitle').innerHTML = num ? '' : cf ? `📖 <b>${esc(pretty(cf.name))}</b>${st.para ? ` · Paragraph ${st.para}` : ''}` : '🎲 Random text'; applyFont();
     $('#textbox').style.display = spec.v === 'word' ? 'none' : ''; $('#inputbox').style.display = (spec.v === 'box' || spec.v === 'guided') ? '' : 'none'; $('#wordView').style.display = spec.v === 'word' ? '' : 'none';
     $('#inputbox').classList.toggle('blind', !!spec.blind); $('#osk').classList.toggle('on', st.osk); $('#keysBtn').classList.toggle('on', st.osk);
     page('test'); render(); timer = setInterval(tick, 50)
@@ -198,9 +229,9 @@ function osk() { if (!st.osk || !s) return; const n = s.done() ? '' : s.full[s.t
 function finish() {
     if (!s || s.end != null) return; clearInterval(timer); s.end = performance.now(); snd[s.failed ? 'fail' : 'finish']();
     const wpm = s.wpm(), cons = s.cons(), pb = wpm > best;
-    const e = { t: new Date().toLocaleString('sv').slice(0, 16), key: modeKey, mid: spec.id, cfg: cfgText, wpm: +wpm.toFixed(1), acc: +s.acc().toFixed(1), pb, raw: +s.raw().toFixed(1), cons: cons == null ? null : +cons.toFixed(1), peak: +s.peak().toFixed(1), errors: s.err, keys: s.keys, backs: s.backs, secs: +s.el().toFixed(1), failed: s.failed, missed: s.missed };
+    const e = { t: new Date().toLocaleString('sv').slice(0, 16), key: modeKey, mid: spec.id, cfg: cfgText, wpm: +wpm.toFixed(1), acc: +s.acc().toFixed(1), pb, raw: +s.raw().toFixed(1), cons: cons == null ? null : +cons.toFixed(1), peak: +s.peak().toFixed(1), errors: s.err, keys: s.keys, backs: s.backs, secs: +s.el().toFixed(1), failed: s.failed, text: textUsed, missed: s.missed };
     S.hist.push(e); S.hist = S.hist.slice(-500); save(); if (pb) setTimeout(snd.win, 300);
-    $('#resTitle').textContent = `${spec.i}  ${spec.t}   ·   ${cfgText}`; $('#resRating').textContent = stars(wpm) + '   ' + rating(wpm);
+    $('#resTitle').textContent = `${spec.i}  ${spec.t}   ·   ${cfgText}` + (textUsed ? `   ·   📖 ${pretty(textUsed)}` : ''); $('#resRating').textContent = stars(wpm) + '   ' + rating(wpm);
     $('#resCards').innerHTML = card('Accuracy', '🎯', e.acc + '%') + card('Raw WPM', '⚡', e.raw) + card('Consistency', '🧘', cons == null ? '-' : Math.round(cons) + '%') + card('Peak WPM', '🚀', e.peak) + card('Time', '⏱', fmt(e.secs)) + card('Errors', '💥', s.err);
     $('#resBadges').innerHTML = (pb ? '<span class="pill gold">★ NEW PERSONAL BEST</span>' : '') + (s.failed ? '<span class="pill" style="color:var(--bad)">☠ ENDED ON MISTAKE</span>' : '') + (!s.err && s.typed.length > 50 ? '<span class="pill" style="color:var(--good)">✨ FLAWLESS</span>' : '');
     $('#resMist').innerHTML = s.mist.length ? s.mist.slice(0, 80).map(m => `<span>${m.t.toFixed(1)}s · expected <b class="c-ok">${esc(m.e || '∅')}</b> got <b style="color:var(--bad)">${esc(m.g === ' ' ? '␣' : m.g)}</b></span>`).join('') : '<span class="c-ok">No mistakes — clean run ✓</span>';
@@ -218,13 +249,20 @@ $('#punctBtn').onclick = () => { st.punct = !st.punct; save(); refreshPractice()
 $('#oskBtn').onclick = () => { st.osk = !st.osk; save(); refreshSettings() };
 $('#keysBtn').onclick = () => { st.osk = !st.osk; $('#osk').classList.toggle('on', st.osk); $('#keysBtn').classList.toggle('on', st.osk); save(); osk() };
 $('#exitBtn').onclick = () => press('Escape'); $('#restartBtn').onclick = () => press('Tab');
-$('#textSel').onchange = e => { st.text = +e.target.value; save(); start() };
+const inTest = () => $('#test').classList.contains('on');
+$$('.textSel').forEach(e => e.onchange = () => { st.text = e.value; st.para = 0; save(); fillTexts(); if (inTest()) start() });
+$$('.paraSel').forEach(e => e.onchange = () => { st.para = +e.value; save(); fillTexts(); if (inTest()) start() });
 $('#againBtn').onclick = () => start(); $('#homeBtn').onclick = () => go('dashboard'); $('#randBtn').onclick = () => start(MODES[Math.floor(Math.random() * MODES.length)].id);
 $('#resetBtn').onclick = () => { if (confirm('Delete all scores and history? This cannot be undone.')) { S.hist = []; save(); refreshStats() } };
+const readTxt = async fl => { const o = []; for (const f of fl) if (/\.txt$/i.test(f.name)) o.push({ name: f.name, text: await f.text() }); return o };
 $('#fileIn').onchange = async e => {
-    const extra = []; for (const f of e.target.files) extra.push({ name: f.name.replace(/\.txt$/i, '').replace(/[_-]/g, ' '), text: await f.text() });
-    TEXTS.push(...extra); try { localStorage.setItem('tm_texts', JSON.stringify(TEXTS.slice(1))) } catch (x) { } refreshSettings(); fillTexts()
+    const add = await readTxt(e.target.files), cur = lsGet('tm_texts').filter(t => !add.some(a => a.name === t.name));
+    try { localStorage.setItem('tm_texts', JSON.stringify([...cur, ...add])) } catch (x) { } await loadData()
+};
+$('#dirIn').onchange = async e => {
+    const d = await readTxt(e.target.files);
+    try { localStorage.setItem('tm_data', JSON.stringify(d)) } catch (x) { alert('Data folder is too large to store in the browser.') } await loadData()
 };
 $('#modeGrid').innerHTML = MODES.map(m => `<button class="btn mode" data-m="${m.id}"><span class="ic">${m.i}</span><b>${m.t}</b><span class="d">${m.d}</span></button>`).join('');
 $$('.mode').forEach(b => b.onclick = () => start(b.dataset.m));
-theme(); sndBtn(); buildOsk(); fillTexts(); go('dashboard');
+theme(); sndBtn(); buildOsk(); fillTexts(); go('dashboard'); loadData();

@@ -50,6 +50,8 @@
                         <div id="durChips" class="row"></div>
                         <span class="grow"></span><button id="punctBtn" class="btn"></button>
                     </div>
+                    <div class="row wrap"><span class="dim">Text</span><select class="textSel"></select><span
+                            class="dim">Paragraph</span><select class="paraSel"></select></div>
                     <p class="dim sm">Duration applies to timed modes. Zen / Marathon are word counts. Burst is always
                         10s. Numbers / Caps ignore the punctuation toggle.</p>
                 </div>
@@ -92,8 +94,13 @@
                 </div>
                 <div class="panel">
                     <h3>TEXTS</h3>
-                    <p id="textsLabel" class="dim"></p><label class="btn">➕&nbsp; Add a book / text file…<input
-                            id="fileIn" type="file" accept=".txt" multiple hidden></label>
+                    <p id="textsLabel" class="dim"></p>
+                    <div class="row wrap"><label class="btn">📁&nbsp; Choose Data folder…<input id="dirIn" type="file"
+                                webkitdirectory hidden></label><label class="btn">➕&nbsp; Add a book / text file…<input
+                                id="fileIn" type="file" accept=".txt" multiple hidden></label></div>
+                    <p class="dim sm">If you serve this folder over http, a <b>Data</b> folder next to index.html loads
+                        automatically (add Data/manifest.json listing the .txt names if your server has no folder
+                        listing). Opened as a plain file, use “Choose Data folder”.</p>
                 </div>
                 <div class="panel">
                     <h3>DATA</h3>
@@ -105,9 +112,11 @@
                 <div class="row wrap">
                     <button id="exitBtn" class="btn">✕&nbsp; Exit</button><span class="grow"></span>
                     <span id="modeTitle" class="dim"></span><span class="grow"></span>
-                    <select id="textSel"></select><button id="keysBtn" class="btn tog">⌨&nbsp; Keys</button><button
-                        id="restartBtn" class="btn">↻&nbsp; Restart</button>
+                    <select class="textSel"></select><select class="paraSel"></select><button id="keysBtn"
+                        class="btn tog">⌨&nbsp; Keys</button><button id="restartBtn" class="btn">↻&nbsp;
+                        Restart</button>
                 </div>
+                <div id="textTitle" class="texttitle"></div>
                 <div id="timeLabel" class="time">60</div>
                 <div class="bar"><i id="barFill"></i></div>
                 <div id="statsLabel" class="center"></div>
@@ -137,6 +146,7 @@
             </section>
         </main>
     </div>
+    <script src="Data/data.js"></script>
     <script src="script.js"></script>
 </body>
 
