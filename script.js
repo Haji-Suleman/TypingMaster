@@ -87,11 +87,39 @@ class Session {
     cons() { if (this.inst.length < 3) return null; const m = this.inst.reduce((a, b) => a + b) / this.inst.length; if (m <= 0) return 0; const sd = Math.sqrt(this.inst.reduce((a, b) => a + (b - m) ** 2, 0) / this.inst.length); return Math.max(0, Math.min(100, 100 - sd / m * 100)) }
     peak() { const a = this.inst; if (a.length >= 3) { let b = 0; for (let i = 0; i <= a.length - 3; i++)b = Math.max(b, (a[i] + a[i + 1] + a[i + 2]) / 3); return b } return a.length ? Math.max(...a) : this.wpm() }
     type(k) {
-        if (this.done()) return; if (!this.start) this.start = performance.now(); const i = this.typed.length, e = this.full[i] || ''; this.keys++;
-        if (k !== e) { this.err++; if (e) { const n = e === ' ' ? 'space' : e; this.missed[n] = (this.missed[n] || 0) + 1 } if (this.mist.length < 2000) this.mist.push({ i, e, g: k, t: this.el() }); if (this.sudden) this.failed = true }
-        this.typed += k
+        if (this.done()) return;
+        if (!this.start) this.start = performance.now();
+        const w = this.words[this.idx] || '', c = this.cur, PAD = '\u00b7';
+        const miss = (i, e, g) => {
+            this.err++;
+            if (e) { const n = e === ' ' ? 'space' : e; this.missed[n] = (this.missed[n] || 0) + 1 }
+            if (this.mist.length < 2000) this.mist.push({ i, e, g, t: this.el() });
+            if (this.sudden) this.failed = true;
+        };
+        if (k === ' ') {
+            if (!c.length) return;                       // space on an empty word: ignore
+            this.keys++;
+            if (c.length < w.length) {                   // skipped letters: pad so words stay aligned
+                for (let j = c.length; j < w.length; j++) miss(this.typed.length, w[j], ' ');
+                this.typed += PAD.repeat(w.length - c.length);
+            }
+            this.typed += ' ';
+            return;
+        }
+        this.keys++;
+        if (c.length >= w.length) { miss(this.typed.length, ' ', k); return }   // extra letter: don't shift alignment
+        const i = this.typed.length, e = this.full[i] || '';
+        if (k !== e) miss(i, e, k);
+        this.typed += k;
     }
-    back() { if (this.nb || !this.typed) return false; this.typed = this.typed.slice(0, -1); this.backs++; return true }
+    back() {
+        if (this.nb || !this.typed) return false;
+        const r = this.typed.slice(-1);
+        this.typed = this.typed.slice(0, -1);
+        if (r === ' ') while (this.typed.endsWith('\u00b7')) this.typed = this.typed.slice(0, -1);  // un-pad
+        this.backs++;
+        return true;
+    }
     lines() { if (this._l && this._n === this.words.length) return this._l; const L = []; let l = [], u = 0; this.words.forEach((w, i) => { if (l.length && u + w.length + 1 > LINE) { L.push(l); l = []; u = 0 } l.push(i); u += w.length + 1 }); L.push(l); this._n = this.words.length; return this._l = L }
 }
 // ---------- rendering helpers
