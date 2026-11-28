@@ -255,6 +255,7 @@ function buildOsk() {
 function osk() { if (!st.osk || !s) return; const n = s.done() ? '' : s.full[s.typed.length] || ''; $$('#osk button').forEach(b => b.classList.remove('next')); if (!n) return; const t = n.toLowerCase(); const b = $(`#osk [data-k="${CSS.escape(t)}"]`); if (b) b.classList.add('next'); if (/[A-Z]/.test(n)) $('#shiftK').classList.add('next') }
 // ---------- finish & results
 function finish() {
+
     if (!s || s.end != null) return; clearInterval(timer); s.end = performance.now(); snd[s.failed ? 'fail' : 'finish']();
     const wpm = s.wpm(), cons = s.cons(), pb = wpm > best;
     const e = { t: new Date().toLocaleString('sv').slice(0, 16), key: modeKey, mid: spec.id, cfg: cfgText, wpm: +wpm.toFixed(1), acc: +s.acc().toFixed(1), pb, raw: +s.raw().toFixed(1), cons: cons == null ? null : +cons.toFixed(1), peak: +s.peak().toFixed(1), errors: s.err, keys: s.keys, backs: s.backs, secs: +s.el().toFixed(1), failed: s.failed, text: textUsed, missed: s.missed };
@@ -277,6 +278,7 @@ $('#punctBtn').onclick = () => { st.punct = !st.punct; save(); refreshPractice()
 $('#oskBtn').onclick = () => { st.osk = !st.osk; save(); refreshSettings() };
 $('#keysBtn').onclick = () => { st.osk = !st.osk; $('#osk').classList.toggle('on', st.osk); $('#keysBtn').classList.toggle('on', st.osk); save(); osk() };
 $('#exitBtn').onclick = () => press('Escape'); $('#restartBtn').onclick = () => press('Tab');
+$('#stopBtn').onclick = () => { if (!s || s.end != null || !s.start) return; s.stopped = true; finish() };
 const inTest = () => $('#test').classList.contains('on');
 $$('.textSel').forEach(e => e.onchange = () => { st.text = e.value; st.para = 0; save(); fillTexts(); if (inTest()) start() });
 $$('.paraSel').forEach(e => e.onchange = () => { st.para = +e.value; save(); fillTexts(); if (inTest()) start() });
